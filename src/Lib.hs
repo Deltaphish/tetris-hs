@@ -33,6 +33,7 @@ data Context = Context {
 , rot   :: Int
 , field :: [Bool]
 , score :: Int
+, time  :: Float
 } deriving (Show)
 
 projectNext :: Context -> Context
@@ -83,14 +84,25 @@ drawShape ctx =  [Translate (fromIntegral (col+posX ctx)*22.0) (fromIntegral (ro
 drawContext :: Context -> Picture
 drawContext ctx = Pictures $ drawShape ctx ++ drawGrid ctx
 
+addDeltaTime :: Float -> Context -> Context
+addDeltaTime dt ctx = ctx{time = time ctx + dt}
+
+clearDeltaTime :: Context -> Context
+clearDeltaTime ctx = ctx{ time = 0.0}
+
 stepGame :: Float -> Context -> Context
-stepGame fl = moveTermino
+stepGame dt ctx
+  | delta >= 1.0 = moveTermino $ clearDeltaTime ctx
+  | velX ctx /= 0 = moveTermino ctx{velY = 0}
+  | otherwise = addDeltaTime dt ctx
+  where
+    delta = time ctx
 
 handleInput :: Event -> Context -> Context
-handleInput (EventKey key _ _ _) ctx
-  | key == Char 'a' = ctx{ velX = -1}
-  | key == Char 'd' = ctx{ velX = 1}
+handleInput (EventKey key st _ _) ctx
+  | st == Down && key == Char 'a' = ctx{ velX = -1}
+  | st == Down && aakey == Char 'd' = ctx{ velX = 1}
 handleInput _ ctx = ctx
 
-initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (-1) 0 (replicate 200 False) 0
+initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (-1) 0 (replicate 200 False) 0 0.0
 
