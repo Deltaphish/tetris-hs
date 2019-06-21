@@ -1,18 +1,16 @@
 module Lib
-    ( someFunc
-    , Shape(Square)
-    , checkField
-    , setField
-    , getCoords
-    , collider
-    , placeShape
-    , spawnNew
-    , Context(Context,posY,field,shape)
-    , moveTermino
-    , stepGame
+    (
+    initWorld
+   ,drawContext
+   ,handleInput
+   ,stepGame
+   ,play
+   ,Display(InWindow)
+   ,white
     ) where
 
 import Graphics.Gloss
+import Graphics.Gloss.Interface.Pure.Game
 import Data.List
 
 data Shape = Square [(Int,Int)] 
@@ -30,13 +28,15 @@ data Context = Context {
 , next  :: Shape
 , posX  :: Int
 , posY  :: Int
+, velX  :: Int
+, velY  :: Int
 , rot   :: Int
 , field :: [Bool]
 , score :: Int
 } deriving (Show)
 
 projectNext :: Context -> Context
-projectNext ctx = ctx {next = Square $ map(\(a,b) -> (a,b-1)) (getCoords (shape ctx))}
+projectNext ctx = ctx {next = Square $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) (getCoords (shape ctx))}
 
 checkField :: Int -> Int -> Context -> Bool
 checkField col row ctx = field ctx !! (row*10 + col)
@@ -61,7 +61,7 @@ spawnNew ctx = ctx { posY = 20, posX = 5}
 
 moveTermino :: Context -> Context
 moveTermino ctx 
-  | not(collider $ projectNext ctx) = ctx { posY = pred $ posY ctx}
+  | not(collider $ projectNext ctx) = ctx { posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1}
   | otherwise = spawnNew $ placeShape ctx
 
 standardBlock = rectangleSolid 20 20
@@ -83,13 +83,14 @@ drawShape ctx =  [Translate (fromIntegral (col+posX ctx)*22.0) (fromIntegral (ro
 drawContext :: Context -> Picture
 drawContext ctx = Pictures $ drawShape ctx ++ drawGrid ctx
 
-stepGame :: a -> Float -> Context -> Context
-stepGame _ _ = moveTermino
+stepGame :: Float -> Context -> Context
+stepGame fl = moveTermino
 
+handleInput :: Event -> Context -> Context
+handleInput (EventKey key _ _ _) ctx
+  | key == Char 'a' = ctx{ velX = -1}
+  | key == Char 'd' = ctx{ velX = 1}
+handleInput _ ctx = ctx
 
-someFunc :: IO ()
-someFunc = do
-    let ctx = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (replicate 200 False) 0
-    simulate (InWindow "Nice Window" (500,700) (10,10)) white 1 ctx drawContext stepGame
-
+initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (-1) 0 (replicate 200 False) 0
 

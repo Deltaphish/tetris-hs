@@ -2,9 +2,9 @@ name:                tetris-hs
 version:             0.1.0.0
 github:              "githubuser/tetris-hs"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2019 Author name here"
+author:              "Joakim Anderlind"
+maintainer:          "joakimanderlind@gmail.com"
+copyright:           "2019 Joakim Anderlind"
 
 extra-source-files:
 - README.md
@@ -21,6 +21,7 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- gloss >= 1.13
 
 library:
   source-dirs: src
