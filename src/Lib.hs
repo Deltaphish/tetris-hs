@@ -40,15 +40,19 @@ projectNext :: Context -> Context
 projectNext ctx = ctx {next = Square $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) (getCoords (shape ctx))}
 
 checkField :: Int -> Int -> Context -> Bool
-checkField col row ctx = field ctx !! (row*10 + col)
+checkField col row ctx
+  | col < 0 || row < 0 = True
+  | otherwise = field ctx !! (row*10 + col)
 
 setField :: Int -> Int -> Context -> Context
 setField 0 0 ctx = ctx {field = newField} where newField = True : tail (field ctx)
 setField col row ctx = ctx {field = init a ++ True : b} where (a,b) = splitAt (row*10+col+1) (field ctx)
 
 colPos :: (Int,Int) -> Context -> Bool
-colPos (_,-1) _ = True
-colPos (col,row) ctx = field ctx !! (col + row*10)
+colPos (col,row) ctx
+ | col < 0 || row < 0 = True
+ | col >= 10 = True
+ | otherwise = field ctx !! (col + row*10)
 
 collider :: Context -> Bool
 collider ctx = True `elem` [colPos (a + posX ctx,b + posY ctx) ctx | (a,b) <- getCoords (next ctx)]
@@ -58,15 +62,16 @@ placeShape :: Context -> Context
 placeShape ctx = foldr (\(a,b) ct -> setField (a + posX ctx) (b + posY ctx) ct) ctx $ getCoords $ shape ctx
 
 spawnNew :: Context -> Context
-spawnNew ctx = ctx { posY = 20, posX = 5}
+spawnNew ctx = ctx { posY = 19, posX = 5}
 
 moveTermino :: Context -> Context
 moveTermino ctx 
-  | not(collider $ projectNext ctx) = ctx { posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1}
-  | otherwise = spawnNew $ placeShape ctx
+  | not(collider(projectNext ctx)) = ctx { posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1}
+  | otherwise = if velX ctx == 0 then spawnNew $ placeShape ctx else ctx {velX = 0}
 
 standardBlock = rectangleSolid 20 20
 standardBorder = rectangleWire 22 22
+container = Translate 22 0 (rectangleWire (22*10) (22*20))
 
 greyBlock = Pictures [Color (greyN 0.6) standardBlock,Color (dark yellow) standardBorder]
 yellowBlock = Pictures [Color yellow standardBlock,Color (dark yellow) standardBorder]
@@ -76,13 +81,15 @@ createPath :: Int -> Int -> Path
 createPath col row = map (\(a,b) -> (a+ fromIntegral col,b + fromIntegral row)) bx where bx = [(-10,-10),(-10,10),(10,10),(10,-10)]
 
 drawGrid :: Context -> [Picture]
-drawGrid ctx = [Translate (fromIntegral col*22.0) (fromIntegral row*22.0 - 22.0*7.0) greyBlock | a <- elemIndices True $ field ctx,let col = a `mod` 10,let row = a `quot` 10]
+drawGrid ctx = [Translate (fromIntegral col*22.0 - 77) (fromIntegral row*22.0 - 22.0*7.0 - 55) greyBlock | a <- elemIndices True $ field ctx,let col = a `mod` 10,let row = a `quot` 10]
+
+drawContainer = container
 
 drawShape :: Context -> [Picture]
-drawShape ctx =  [Translate (fromIntegral (col+posX ctx)*22.0) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0) yellowBlock | let a = getCoords $ shape ctx,(col,row) <- a]
+drawShape ctx =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) yellowBlock | let a = getCoords $ shape ctx,(col,row) <- a]
 
 drawContext :: Context -> Picture
-drawContext ctx = Pictures $ drawShape ctx ++ drawGrid ctx
+drawContext ctx = Pictures $ drawContainer : drawShape ctx ++ drawGrid ctx
 
 addDeltaTime :: Float -> Context -> Context
 addDeltaTime dt ctx = ctx{time = time ctx + dt}
@@ -92,8 +99,8 @@ clearDeltaTime ctx = ctx{ time = 0.0}
 
 stepGame :: Float -> Context -> Context
 stepGame dt ctx
-  | delta >= 1.0 = moveTermino $ clearDeltaTime ctx
-  | velX ctx /= 0 = moveTermino ctx{velY = 0}
+  | delta >= 0.5 = moveTermino $ clearDeltaTime ctx{velX = 0}
+  | velX ctx /= 0 = moveTermino $ addDeltaTime dt ctx{velY = 0}
   | otherwise = addDeltaTime dt ctx
   where
     delta = time ctx
@@ -101,8 +108,8 @@ stepGame dt ctx
 handleInput :: Event -> Context -> Context
 handleInput (EventKey key st _ _) ctx
   | st == Down && key == Char 'a' = ctx{ velX = -1}
-  | st == Down && aakey == Char 'd' = ctx{ velX = 1}
+  | st == Down && key == Char 'd' = ctx{ velX = 1}
 handleInput _ ctx = ctx
 
-initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (-1) 0 (replicate 200 False) 0 0.0
+initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 19 0 (-1) 0 (replicate 200 False) 0 0.0
 
