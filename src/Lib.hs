@@ -1,13 +1,6 @@
-module Lib
-    (
-    initWorld
-   ,drawContext
-   ,handleInput
-   ,stepGame
-   ,play
-   ,Display(InWindow)
-   ,white
-    ) where
+module Lib(
+  game
+) where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
@@ -31,28 +24,32 @@ data Context = Context {
 , velX  :: Int
 , velY  :: Int
 , rot   :: Int
-, field :: [Bool]
+, field :: [[Bool]]
 , score :: Int
 , time  :: Float
 } deriving (Show)
 
 projectNext :: Context -> Context
 projectNext ctx = ctx {next = Square $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) (getCoords (shape ctx))}
+ 
 
 checkField :: Int -> Int -> Context -> Bool
 checkField col row ctx
   | col < 0 || row < 0 = True
-  | otherwise = field ctx !! (row*10 + col)
+  | otherwise = (field ctx !! row) !! col
 
 setField :: Int -> Int -> Context -> Context
-setField 0 0 ctx = ctx {field = newField} where newField = True : tail (field ctx)
-setField col row ctx = ctx {field = init a ++ True : b} where (a,b) = splitAt (row*10+col+1) (field ctx)
+setField col row ctx = ctx{field = init rowH ++ (init colH ++ True : colT) : rowT}
+  where
+    (rowH,rowT) = splitAt (row+1) (field ctx)
+    (colH,colT) = splitAt (col+1) (last rowH)
+
 
 colPos :: (Int,Int) -> Context -> Bool
 colPos (col,row) ctx
  | col < 0 || row < 0 = True
  | col >= 10 = True
- | otherwise = field ctx !! (col + row*10)
+ | otherwise = field ctx !! row !! col
 
 collider :: Context -> Bool
 collider ctx = True `elem` [colPos (a + posX ctx,b + posY ctx) ctx | (a,b) <- getCoords (next ctx)]
@@ -81,7 +78,10 @@ createPath :: Int -> Int -> Path
 createPath col row = map (\(a,b) -> (a+ fromIntegral col,b + fromIntegral row)) bx where bx = [(-10,-10),(-10,10),(10,10),(10,-10)]
 
 drawGrid :: Context -> [Picture]
-drawGrid ctx = [Translate (fromIntegral col*22.0 - 77) (fromIntegral row*22.0 - 22.0*7.0 - 55) greyBlock | a <- elemIndices True $ field ctx,let col = a `mod` 10,let row = a `quot` 10]
+drawGrid ctx = [drawRow ctx x | x <- [0..9]]
+
+drawRow :: Context -> Int -> Picture
+drawRow ctx row = Pictures [Translate (fromIntegral col*22.0 - 77) (fromIntegral row*22.0 - 22.0*9.5) greyBlock | col <- elemIndices True $ field ctx !! row]
 
 drawContainer = container
 
@@ -111,5 +111,6 @@ handleInput (EventKey key st _ _) ctx
   | st == Down && key == Char 'd' = ctx{ velX = 1}
 handleInput _ ctx = ctx
 
-initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 19 0 (-1) 0 (replicate 200 False) 0 0.0
+initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 19 0 (-1) 0 (replicate 20 (replicate 10 False)) 0 0.0
+game = play (InWindow "Nice Window" (500,700) (10,10)) white 60 initWorld drawContext handleInput stepGame
 
