@@ -1,5 +1,8 @@
 module Lib(
-  game
+  game,
+  findComplete,
+  findCompleteLines,
+  expandList
 ) where
 
 import Graphics.Gloss
@@ -44,6 +47,18 @@ setField col row ctx = ctx{field = init rowH ++ (init colH ++ True : colT) : row
     (rowH,rowT) = splitAt (row+1) (field ctx)
     (colH,colT) = splitAt (col+1) (last rowH)
 
+expandList :: [[Bool]] -> [[Bool]]
+expandList arr | length arr < 20 = expandList (arr ++ [replicate 10 False])
+               | otherwise = arr
+
+findComplete :: [[Bool]] -> [[Bool]]
+findComplete [] = []
+findComplete arr | and $ head arr = findComplete $ tail arr
+                 | otherwise = head arr : findComplete (tail arr)
+
+
+findCompleteLines :: Context -> Context
+findCompleteLines ctx = ctx{field = expandList $ findComplete $ field ctx}
 
 colPos :: (Int,Int) -> Context -> Bool
 colPos (col,row) ctx
@@ -64,7 +79,7 @@ spawnNew ctx = ctx { posY = 19, posX = 5}
 moveTermino :: Context -> Context
 moveTermino ctx 
   | not(collider(projectNext ctx)) = ctx { posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1}
-  | otherwise = if velX ctx == 0 then spawnNew $ placeShape ctx else ctx {velX = 0}
+  | otherwise = if velX ctx == 0 then spawnNew $ findCompleteLines $ placeShape ctx else ctx {velX = 0}
 
 standardBlock = rectangleSolid 20 20
 standardBorder = rectangleWire 22 22
