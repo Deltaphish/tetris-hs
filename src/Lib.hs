@@ -1,13 +1,16 @@
 module Lib(
-  game,
-  findComplete,
-  findCompleteLines,
-  expandList
+  game
+, shape
+, chooseShape
+, initWorld
+, stepGame
 ) where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List
+import qualified System.Random
+
 
 data Shape = Square [(Int,Int)] 
            | Lblock [(Int,Int)] 
@@ -16,8 +19,31 @@ data Shape = Square [(Int,Int)]
            | RSquig [(Int,Int)] 
            | Straight [(Int,Int)] deriving (Show)
 
+square = Square [(0,0),(1,0),(1,-1),(0,-1)]
+lblock = Lblock [(0,0),(0,1),(0,-1),(1,-1)]
+rblock = RLblock [(0,0),(0,1),(0,-1),(-1,-1)]
+squig = Squig [(0,0),(1,0),(-1,-1),(0,-1)]
+rsquig = RSquig [(0,0),(-1,0),(1,-1),(0,-1)]
+straight = Straight [(0,0),(-1,0),(1,0),(2,0)]
+
+chooseShapeList = [square,lblock,rblock,square,rsquig,straight]
+
+chooseShape :: Context -> Context
+chooseShape ctx = newCtx{shape = chooseShapeList !! rnd}
+  where
+    (n,gen) = System.Random.next (generator ctx)
+    rnd = n `mod` 6
+    newCtx = ctx{generator=gen}
+
+
+
 getCoords :: Shape -> [(Int,Int)]
 getCoords (Square arr) = arr
+getCoords (Lblock arr) = arr
+getCoords (RLblock arr) = arr
+getCoords (Squig arr) = arr
+getCoords (RSquig arr) = arr
+getCoords (Straight arr) = arr
 
 data Context = Context {
   shape :: Shape
@@ -30,10 +56,17 @@ data Context = Context {
 , field :: [[Bool]]
 , score :: Int
 , time  :: Float
+, generator  :: System.Random.StdGen
 } deriving (Show)
 
-projectNext :: Context -> Context
-projectNext ctx = ctx {next = Square $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) (getCoords (shape ctx))}
+projectNext :: Context -> Shape-> Context
+projectNext ctx (Square coords)= ctx {next = Square $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+projectNext ctx (Lblock coords)= ctx {next = Lblock $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+projectNext ctx (RLblock coords)= ctx {next = RLblock $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+projectNext ctx (Squig coords)= ctx {next = Squig $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+projectNext ctx (RSquig coords)= ctx {next = RSquig $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+projectNext ctx (Straight coords)= ctx {next = Straight $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+
  
 
 checkField :: Int -> Int -> Context -> Bool
@@ -74,11 +107,11 @@ placeShape :: Context -> Context
 placeShape ctx = foldr (\(a,b) ct -> setField (a + posX ctx) (b + posY ctx) ct) ctx $ getCoords $ shape ctx
 
 spawnNew :: Context -> Context
-spawnNew ctx = ctx { posY = 19, posX = 5}
+spawnNew ctx = (chooseShape ctx) { posY = 18, posX = 5}
 
 moveTermino :: Context -> Context
 moveTermino ctx 
-  | not(collider(projectNext ctx)) = ctx { posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1}
+  | not(collider(projectNext ctx (shape ctx))) = ctx { posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1}
   | otherwise = if velX ctx == 0 then spawnNew $ findCompleteLines $ placeShape ctx else ctx {velX = 0}
 
 standardBlock = rectangleSolid 20 20
@@ -126,6 +159,9 @@ handleInput (EventKey key st _ _) ctx
   | st == Down && key == Char 'd' = ctx{ velX = 1}
 handleInput _ ctx = ctx
 
-initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 19 0 (-1) 0 (replicate 20 (replicate 10 False)) 0 0.0
-game = play (InWindow "Nice Window" (500,700) (10,10)) white 60 initWorld drawContext handleInput stepGame
+initWorld :: System.Random.StdGen -> Context
+initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 19 0 (-1) 0 (replicate 20 (replicate 10 False)) 0 0.0 
+
+game xs = play (InWindow "Nice Window" (500,700) (10,10)) white 60 (initWorld xs) drawContext handleInput stepGame
+
 
