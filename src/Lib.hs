@@ -4,6 +4,9 @@ module Lib(
 , chooseShape
 , initWorld
 , stepGame
+, Lib.rotate
+, rot
+, rotateMatrix
 ) where
 
 import Graphics.Gloss
@@ -67,7 +70,17 @@ projectNext ctx (Squig coords)= ctx {next = Squig $ map(\(a,b) -> (a + velX ctx,
 projectNext ctx (RSquig coords)= ctx {next = RSquig $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
 projectNext ctx (Straight coords)= ctx {next = Straight $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
 
- 
+rotateMatrix :: (Int,Int) -> Int -> (Int,Int)
+rotateMatrix (a,b) 0 = (a,b)
+rotateMatrix (a,b) i = rotateMatrix (b,-a) (i - 1)
+
+rotate :: Context -> Shape -> Context
+rotate ctx (Square coords)= ctx{next = Square $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
+rotate ctx (Lblock coords)= ctx{next = Lblock $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
+rotate ctx (RLblock coords)= ctx{next = RLblock $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
+rotate ctx (Squig coords)= ctx{next = Squig $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
+rotate ctx (RSquig coords)= ctx{next = RSquig $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
+rotate ctx (Straight coords)= ctx{next = Straight $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
 
 checkField :: Int -> Int -> Context -> Bool
 checkField col row ctx
@@ -111,8 +124,8 @@ spawnNew ctx = (chooseShape ctx) { posY = 18, posX = 5}
 
 moveTermino :: Context -> Context
 moveTermino ctx 
-  | not(collider(projectNext ctx (shape ctx))) = ctx { posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1}
-  | otherwise = if velX ctx == 0 then spawnNew $ findCompleteLines $ placeShape ctx else ctx {velX = 0}
+  | not(collider(projectNext ctx (next (Lib.rotate ctx (shape ctx))))) = ctx { shape = next $ Lib.rotate ctx (shape ctx) ,posY = posY ctx + velY ctx, posX = posX ctx + velX ctx, velX = 0, velY = -1, rot = 0}
+  | otherwise = if velX ctx == 0 && rot ctx == 0 then spawnNew $ findCompleteLines $ placeShape ctx else ctx {velX = 0,rot = 0}
 
 standardBlock = rectangleSolid 20 20
 standardBorder = rectangleWire 22 22
@@ -157,6 +170,7 @@ handleInput :: Event -> Context -> Context
 handleInput (EventKey key st _ _) ctx
   | st == Down && key == Char 'a' = ctx{ velX = -1}
   | st == Down && key == Char 'd' = ctx{ velX = 1}
+  | st == Down && key == Char 's' = ctx{ rot = 1}
 handleInput _ ctx = ctx
 
 initWorld :: System.Random.StdGen -> Context
