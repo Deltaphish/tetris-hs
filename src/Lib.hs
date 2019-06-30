@@ -94,7 +94,7 @@ setField col row ctx = ctx{field = init rowH ++ (init colH ++ True : colT) : row
     (colH,colT) = splitAt (col+1) (last rowH)
 
 expandList :: [[Bool]] -> [[Bool]]
-expandList arr | length arr < 20 = expandList (arr ++ [replicate 10 False])
+expandList arr | length arr < 21 = expandList (arr ++ [replicate 10 False])
                | otherwise = arr
 
 findComplete :: [[Bool]] -> [[Bool]]
@@ -120,7 +120,7 @@ placeShape :: Context -> Context
 placeShape ctx = foldr (\(a,b) ct -> setField (a + posX ctx) (b + posY ctx) ct) ctx $ getCoords $ shape ctx
 
 spawnNew :: Context -> Context
-spawnNew ctx = (chooseShape ctx) { posY = 18, posX = 5}
+spawnNew ctx = (chooseShape ctx) { posY = 19, posX = 4, score = (score ctx) + 1}
 
 moveTermino :: Context -> Context
 moveTermino ctx 
@@ -139,7 +139,7 @@ createPath :: Int -> Int -> Path
 createPath col row = map (\(a,b) -> (a+ fromIntegral col,b + fromIntegral row)) bx where bx = [(-10,-10),(-10,10),(10,10),(10,-10)]
 
 drawGrid :: Context -> [Picture]
-drawGrid ctx = [drawRow ctx x | x <- [0..9]]
+drawGrid ctx = [drawRow ctx x | x <- [0..19]]
 
 drawRow :: Context -> Int -> Picture
 drawRow ctx row = Pictures [Translate (fromIntegral col*22.0 - 77) (fromIntegral row*22.0 - 22.0*9.5) greyBlock | col <- elemIndices True $ field ctx !! row]
@@ -160,7 +160,7 @@ clearDeltaTime ctx = ctx{ time = 0.0}
 
 stepGame :: Float -> Context -> Context
 stepGame dt ctx
-  | delta >= 0.5 = moveTermino $ clearDeltaTime ctx{velX = 0}
+  | delta >= 0.10 = checkForLoss $ moveTermino $ clearDeltaTime ctx{velX = 0}
   | velX ctx /= 0 = moveTermino $ addDeltaTime dt ctx{velY = 0}
   | otherwise = addDeltaTime dt ctx
   where
@@ -174,7 +174,13 @@ handleInput (EventKey key st _ _) ctx
 handleInput _ ctx = ctx
 
 initWorld :: System.Random.StdGen -> Context
-initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 19 0 (-1) 0 (replicate 20 (replicate 10 False)) 0 0.0 
+initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (-1) 0 (replicate 20 (replicate 10 False)) 0 0.0 
+
+checkForLoss :: Context -> Context
+checkForLoss ctx
+  | or (field ctx !! 19) = ctx{field = replicate 20 $ replicate 10 False, score = 0}
+  | otherwise = ctx
+
 
 game xs = play (InWindow "Nice Window" (500,700) (10,10)) white 60 (initWorld xs) drawContext handleInput stepGame
 
