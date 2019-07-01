@@ -102,7 +102,6 @@ findComplete [] = []
 findComplete arr | and $ head arr = findComplete $ tail arr
                  | otherwise = head arr : findComplete (tail arr)
 
-
 findCompleteLines :: Context -> Context
 findCompleteLines ctx = ctx{field = expandList $ findComplete $ field ctx}
 
@@ -149,8 +148,11 @@ drawContainer = container
 drawShape :: Context -> [Picture]
 drawShape ctx =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) yellowBlock | let a = getCoords $ shape ctx,(col,row) <- a]
 
+drawScore :: Context -> Picture
+drawScore ctx = Scale 0.5 0.5 $ Translate (-500.0) (-22.0) (Text $ show $ score ctx)
+
 drawContext :: Context -> Picture
-drawContext ctx = Pictures $ drawContainer : drawShape ctx ++ drawGrid ctx
+drawContext ctx = Pictures $ drawScore ctx : drawContainer : drawShape ctx ++ drawGrid ctx
 
 addDeltaTime :: Float -> Context -> Context
 addDeltaTime dt ctx = ctx{time = time ctx + dt}
@@ -160,7 +162,7 @@ clearDeltaTime ctx = ctx{ time = 0.0}
 
 stepGame :: Float -> Context -> Context
 stepGame dt ctx
-  | delta >= 0.10 = checkForLoss $ moveTermino $ clearDeltaTime ctx{velX = 0}
+  | delta >= 0.25 = checkForLoss $ moveTermino $ clearDeltaTime ctx{velX = 0}
   | velX ctx /= 0 = moveTermino $ addDeltaTime dt ctx{velY = 0}
   | otherwise = addDeltaTime dt ctx
   where
@@ -174,11 +176,11 @@ handleInput (EventKey key st _ _) ctx
 handleInput _ ctx = ctx
 
 initWorld :: System.Random.StdGen -> Context
-initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (-1) 0 (replicate 20 (replicate 10 False)) 0 0.0 
+initWorld = Context (Square [(0,0),(0,-1),(-1,-1),(-1,0)]) (Square [(0,-1),(0,-2),(-1,-2),(-1,-1)]) 5 20 0 (-1) 0 (replicate 21 (replicate 10 False)) 0 0.0 
 
 checkForLoss :: Context -> Context
 checkForLoss ctx
-  | or (field ctx !! 19) = ctx{field = replicate 20 $ replicate 10 False, score = 0}
+  | or (field ctx !! 19) = ctx{field = replicate 21 $ replicate 10 False, score = 0}
   | otherwise = ctx
 
 
