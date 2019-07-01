@@ -20,6 +20,7 @@ data Shape = Square [(Int,Int)]
            | RLblock [(Int,Int)] 
            | Squig [(Int,Int)] 
            | RSquig [(Int,Int)] 
+           | Tblock [(Int,Int)]
            | Straight [(Int,Int)] deriving (Show)
 
 square = Square [(0,0),(1,0),(1,-1),(0,-1)]
@@ -28,14 +29,15 @@ rblock = RLblock [(0,0),(0,1),(0,-1),(-1,-1)]
 squig = Squig [(0,0),(1,0),(-1,-1),(0,-1)]
 rsquig = RSquig [(0,0),(-1,0),(1,-1),(0,-1)]
 straight = Straight [(0,0),(-1,0),(1,0),(2,0)]
+tblock = Tblock [(0,0),(1,0),(-1,0),(0,1)]
 
-chooseShapeList = [square,lblock,rblock,square,rsquig,straight]
+chooseShapeList = [square,lblock,rblock,square,rsquig,straight,tblock]
 
 chooseShape :: Context -> Context
 chooseShape ctx = newCtx{shape = chooseShapeList !! rnd}
   where
     (n,gen) = System.Random.next (generator ctx)
-    rnd = n `mod` 6
+    rnd = n `mod` 7
     newCtx = ctx{generator=gen}
 
 
@@ -47,6 +49,7 @@ getCoords (RLblock arr) = arr
 getCoords (Squig arr) = arr
 getCoords (RSquig arr) = arr
 getCoords (Straight arr) = arr
+getCoords (Tblock arr) = arr
 
 data Context = Context {
   shape :: Shape
@@ -69,6 +72,8 @@ projectNext ctx (RLblock coords)= ctx {next = RLblock $ map(\(a,b) -> (a + velX 
 projectNext ctx (Squig coords)= ctx {next = Squig $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
 projectNext ctx (RSquig coords)= ctx {next = RSquig $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
 projectNext ctx (Straight coords)= ctx {next = Straight $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+projectNext ctx (Tblock coords)= ctx {next = Tblock $ map(\(a,b) -> (a + velX ctx,b + velY ctx)) coords}
+
 
 rotateMatrix :: (Int,Int) -> Int -> (Int,Int)
 rotateMatrix (a,b) 0 = (a,b)
@@ -81,6 +86,8 @@ rotate ctx (RLblock coords)= ctx{next = RLblock $ map(\(a,b) -> rotateMatrix (a,
 rotate ctx (Squig coords)= ctx{next = Squig $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
 rotate ctx (RSquig coords)= ctx{next = RSquig $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
 rotate ctx (Straight coords)= ctx{next = Straight $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
+rotate ctx (Tblock coords)= ctx{next = Tblock $ map(\(a,b) -> rotateMatrix (a,b) (rot ctx)) coords}
+
 
 checkField :: Int -> Int -> Context -> Bool
 checkField col row ctx
@@ -133,6 +140,11 @@ container = Translate 22 0 (rectangleWire (22*10) (22*20))
 greyBlock = Pictures [Color (greyN 0.6) standardBlock,Color (dark yellow) standardBorder]
 yellowBlock = Pictures [Color yellow standardBlock,Color (dark yellow) standardBorder]
 redBlock = Pictures [Color red standardBlock,Color (dark red) standardBorder]
+cyanBlock = Pictures [Color cyan standardBlock,Color (dark cyan) standardBorder]
+orangeBlock = Pictures [Color orange standardBlock,Color (dark orange) standardBorder]
+purpleBlock = Pictures [Color violet standardBlock,Color (dark violet) standardBorder]
+blueBlock = Pictures [Color blue standardBlock,Color (dark blue) standardBorder]
+greenBlock = Pictures [Color green standardBlock,Color (dark green) standardBorder]
 
 createPath :: Int -> Int -> Path
 createPath col row = map (\(a,b) -> (a+ fromIntegral col,b + fromIntegral row)) bx where bx = [(-10,-10),(-10,10),(10,10),(10,-10)]
@@ -145,14 +157,21 @@ drawRow ctx row = Pictures [Translate (fromIntegral col*22.0 - 77) (fromIntegral
 
 drawContainer = container
 
-drawShape :: Context -> [Picture]
-drawShape ctx =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) yellowBlock | let a = getCoords $ shape ctx,(col,row) <- a]
+drawShape :: Context -> Shape -> [Picture]
+drawShape ctx (Square coords) =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) yellowBlock | (col,row) <- coords]
+drawShape ctx (Lblock coords) =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55)  orangeBlock | (col,row) <- coords]
+drawShape ctx (RLblock coords) =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) blueBlock | (col,row) <- coords]
+drawShape ctx (Squig coords) =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) greenBlock | (col,row) <- coords]
+drawShape ctx (RSquig coords) =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) redBlock | (col,row) <- coords]
+drawShape ctx (Straight coords) =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) cyanBlock | (col,row) <- coords]
+drawShape ctx (Tblock coords) =  [Translate (fromIntegral (col+posX ctx)*22.0 - 77) (fromIntegral (row+posY ctx)*22.0 - 22.0*7.0 - 55) purpleBlock | (col,row) <- coords]
+
 
 drawScore :: Context -> Picture
 drawScore ctx = Scale 0.5 0.5 $ Translate (-500.0) (-22.0) (Text $ show $ score ctx)
 
 drawContext :: Context -> Picture
-drawContext ctx = Pictures $ drawScore ctx : drawContainer : drawShape ctx ++ drawGrid ctx
+drawContext ctx = Pictures $ drawScore ctx : drawContainer : drawShape ctx (shape ctx) ++ drawGrid ctx
 
 addDeltaTime :: Float -> Context -> Context
 addDeltaTime dt ctx = ctx{time = time ctx + dt}
