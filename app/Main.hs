@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import App
 import System.Random
 
 main :: IO ()
